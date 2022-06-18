@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/metadata",
+    "crates/allocator",
+    "crates/lang",
+    "crates/lang/macro",
+    "crates/lang/ir",
+    "crates/lang/codegen",
+    "crates/lang/macro",
+    "crates/prelude",
+    "crates/primitives",
+    "crates/engine",
+    "crates/env",
+    "crates/storage",
+    "crates/storage/derive",
+]
+exclude = [
+    "contracts/",
+]
+
+[profile.release]
+panic = "abort"
+lto = true
