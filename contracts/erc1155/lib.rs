@@ -58,6 +58,7 @@ pub struct TokenFeatures {
     pub name: String,
     pub image: String,
     pub issuer: AccountId,
+    pub setid: u32,
 }
 
 // The ERC-1155 error types.
@@ -362,7 +363,6 @@ mod erc1155 {
             return address;
         }
 
-
         
 
         #[ink(message)]
@@ -462,6 +462,42 @@ mod erc1155 {
             }
         }
 
+        // &mut self,
+        // from: AccountId,
+        // to: AccountId,
+        // token_id: TokenId,
+        // value: Balance,
+        // data: Vec<u8>,
+        /// stake the token
+
+        #[ink(message)]
+        pub fn stake_token(
+            &mut self,
+            token_id: TokenId,
+            stake_amount: Balance,
+            data: Vec<u8>
+        ) -> Result<()> {
+            let caller = self.env().caller();
+            let address = self.redeemable_contract.get_contract_address().clone();
+
+            //* only you can stake your tokens - could change this later on
+            // self.perform_transfer(caller, address, token_id, stake_amount);
+            // self.balances
+            // .entry((address, token_id))
+            // .and_modify(|b| *b += stake_amount)
+            // .or_insert(stake_amount);
+            ensure!(address != AccountId::default(), Error::ZeroAddressTransfer);
+
+            let balance = self.balance_of(caller, token_id);
+            ensure!(balance >= stake_amount, Error::InsufficientBalance);
+
+            self.perform_transfer(caller, address, token_id, stake_amount);
+            //todo: get the stake date
+            let setid = self.token_features.get(&token_id).map(|v| v.setid.clone()).unwrap_or(0);
+            self.redeemable_contract.stake_nft(caller,token_id,stake_amount,setid,100);
+            Ok(())
+        }
+
                 // /// Creates an NFT set
                 #[ink(message)]
                 pub fn create_nft_set(
@@ -532,6 +568,7 @@ mod erc1155 {
                     /// first add the token then increment the count
                     self.owned_set_tokens_count.insert(setId, (length + 1));
                     // Ok(())
+                
                     Ok(())
                 }
         
@@ -601,6 +638,7 @@ mod erc1155 {
                         name,
                         image,
                         issuer: caller,
+                        setid,
                     },
                 );
                 self.balances.insert((caller, token_id), value);
@@ -827,6 +865,7 @@ mod erc1155 {
             data: Vec<u8>,
         ) -> Result<()> {
             let caller = self.env().caller();
+            //* I have tried removing this
             if caller != from {
                 ensure!(self.is_approved_for_all(from, caller), Error::NotApproved);
             }
@@ -837,6 +876,7 @@ mod erc1155 {
             ensure!(balance >= value, Error::InsufficientBalance);
 
             self.perform_transfer(from, to, token_id, value);
+            //todo: keep this create an issue to resolve
             self.transfer_acceptance_check(caller, from, to, token_id, value, data);
 
             Ok(())
