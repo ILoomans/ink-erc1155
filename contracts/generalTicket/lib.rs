@@ -4,15 +4,11 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod erc20 {
-    #[cfg(not(feature = "ink-as-dependency"))]
-    use ink_storage::{
-        collections::HashMap as StorageHashMap,
-        lazy::Lazy,
-    };
+    use endDate::EndDate;
     use ink_prelude::string::String;
-
-
-
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
+    use ink_env::call::FromAccountId;
 
     /// A simple ERC-20 contract.
     #[ink(storage)]
@@ -25,14 +21,14 @@ mod erc20 {
         /// from another account.
         allowances: StorageHashMap<(AccountId, AccountId), Balance>,
         price: u128,
-        owner:AccountId,
+        owner: AccountId,
         contract_balance: Balance,
-        proof_key: StorageHashMap<AccountId,String>,    
-        verifier: StorageHashMap<AccountId,bool>,
-        date: u128,    
+        proof_key: StorageHashMap<AccountId, String>,
+        verifier: StorageHashMap<AccountId, bool>,
+        date: u128,
     }
 
-            /// index of signatures
+    /// index of signatures
 
     /// Event emitted when a token transfer occurs.
     #[ink(event)]
@@ -65,7 +61,7 @@ mod erc20 {
         InsufficientBalance,
         /// Returned if not enough allowance to fulfill a request is available.
         InsufficientAllowance,
-        /// Incorrect value sent 
+        /// Incorrect value sent
         IncorrectValue,
         /// The transfer has failed
         TransferFailed,
@@ -76,13 +72,8 @@ mod erc20 {
         /// Not Verifier
         NotVerifier,
         /// Cannot fetch
-        CannotFetch
-
+        CannotFetch,
     }
-
-
-
-
 
     /// The ERC-20 result type.
     pub type Result<T> = core::result::Result<T, Error>;
@@ -90,25 +81,32 @@ mod erc20 {
     impl Erc20 {
         /// Creates a new ERC-20 contract with the specified initial supply.
 
-        /// parent account will control it 
+        /// parent account will control it
         #[ink(constructor)]
-        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,date:u128) -> Self {
+        pub fn new(
+            initial_supply: Balance,
+            price: u128,
+            owner: AccountId,
+            date: u128,
+            end_date_address: AccountId,
+        ) -> Self {
             let caller = Self::env().caller();
             let mut balances = StorageHashMap::new();
             balances.insert(owner, initial_supply);
+            let mut end_date_contract: EndDate =
+                FromAccountId::from_account_id(end_date_address);
+            end_date_contract.set_end_date(date);
             let instance = Self {
                 total_supply: Lazy::new(initial_supply),
                 balances,
                 allowances: StorageHashMap::new(),
                 price,
                 owner,
-                contract_balance:0,
+                contract_balance: 0,
                 proof_key: Default::default(),
                 verifier: Default::default(),
-                date
+                date,
             };
-
-
 
             Self::env().emit_event(Transfer {
                 from: None,
@@ -117,7 +115,7 @@ mod erc20 {
             });
             instance
         }
-        
+
         #[ink(message)]
         pub fn get_date(&self) -> u128 {
             self.date
@@ -131,12 +129,12 @@ mod erc20 {
 
         #[ink(message)]
         pub fn contract_balance(&self) -> Balance {
-            return self.contract_balance
+            return self.contract_balance;
         }
 
         #[ink(message)]
         pub fn proof(&self, to: AccountId) -> String {
-            return self.proof_key.get(&to).unwrap().clone()
+            return self.proof_key.get(&to).unwrap().clone();
         }
 
         #[ink(message)]
@@ -144,18 +142,16 @@ mod erc20 {
             return self.owner;
         }
 
-
         #[ink(message)]
-        pub fn is_verifier(&self,to: AccountId) -> bool {
+        pub fn is_verifier(&self, to: AccountId) -> bool {
             *self.verifier.get(&to).unwrap_or(&false)
-        } 
-
+        }
 
         #[ink(message)]
         pub fn getPrice(&self) -> u128 {
             return self.price;
         }
- 
+
         /// Returns the account balance for the specified `owner`.
         ///
         /// Returns `0` if the account is non-existent.
@@ -180,11 +176,10 @@ mod erc20 {
         pub fn add_verifier(&mut self, to: AccountId) -> Result<()> {
             let from = self.env().caller();
             if from == self.owner {
-                self.verifier.insert(to,true);
+                self.verifier.insert(to, true);
                 Ok(())
-            }else{
+            } else {
                 return Err(Error::NotOwner);
-
             }
         }
 
@@ -194,49 +189,43 @@ mod erc20 {
         /// Returns `InsufficientBalance` error if there are not enough tokens on
         /// the caller's account balance.
 
-
-
         #[ink(message)]
         pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
             let from = self.env().caller();
             self.transfer_from_to(from, to, value)
         }
 
-
-        #[ink(message,payable)]
-        pub fn purchase_tickets(&mut self,to: AccountId, value: Balance, signature: String) -> Result<()> {
-            self.proof_key.insert(to,signature);
-            if self.price*value != self.env().transferred_balance() {
+        #[ink(message, payable)]
+        pub fn purchase_tickets(
+            &mut self,
+            to: AccountId,
+            value: Balance,
+            signature: String,
+        ) -> Result<()> {
+            self.proof_key.insert(to, signature);
+            if self.price * value != self.env().transferred_balance() {
                 return Err(Error::IncorrectPrice);
-            }else{
-                self.transfer_from_to(self.owner,to, value);
+            } else {
+                self.transfer_from_to(self.owner, to, value);
                 self.contract_balance += self.env().transferred_balance();
                 Ok(())
             }
         }
 
-
-        
-        #[ink(message,payable)]
+        #[ink(message, payable)]
         pub fn clear(&mut self, value: Balance) -> Result<()> {
             let check = self.env().caller();
             if check != self.owner {
                 //fix this error
                 return Err(Error::IncorrectPrice);
-            }else{
-            self.env().transfer(self.owner,self.contract_balance);
-            self.contract_balance = 0;
-            Ok(()) 
+            } else {
+                self.env().transfer(self.owner, self.contract_balance);
+                self.contract_balance = 0;
+                Ok(())
             }
-
         }
 
-
-        // sell function here 
-
-
-
-
+        // sell function here
 
         // /// Allows `spender` to withdraw from the caller's account multiple times, up to
         /// the `value` amount.
@@ -261,18 +250,17 @@ mod erc20 {
             let caller = self.env().caller();
             let is_ver = *self.verifier.get(&caller).unwrap_or(&false);
             if is_ver == true {
-            let allowance = self.balances.get(&from).copied().unwrap_or(0);
-            if allowance < value {
-                return Err(Error::InsufficientAllowance)
-            }else{
-                self.balances.insert(from, allowance - value);
-                Ok(())
-            }
+                let allowance = self.balances.get(&from).copied().unwrap_or(0);
+                if allowance < value {
+                    return Err(Error::InsufficientAllowance);
+                } else {
+                    self.balances.insert(from, allowance - value);
+                    Ok(())
+                }
             } else {
                 return Err(Error::NotVerifier);
             }
         }
-
 
         /// Transfers `value` tokens on the behalf of `from` to the account `to`.
         ///
@@ -298,7 +286,7 @@ mod erc20 {
             let caller = self.env().caller();
             let allowance = self.allowance(from, caller);
             if allowance < value {
-                return Err(Error::InsufficientAllowance)
+                return Err(Error::InsufficientAllowance);
             }
             self.transfer_from_to(from, to, value)?;
             self.allowances.insert((from, caller), allowance - value);
@@ -314,13 +302,8 @@ mod erc20 {
         /// Returns `InsufficientBalance` error if there are not enough tokens on
         /// the caller's account balance.
 
-
         /// burn item here
         /// only allow the registered verifiers to do this
-
-
-
-
 
         fn transfer_from_to(
             &mut self,
@@ -330,7 +313,7 @@ mod erc20 {
         ) -> Result<()> {
             let from_balance = self.balance_of(from);
             if from_balance < value {
-                return Err(Error::InsufficientBalance)
+                return Err(Error::InsufficientBalance);
             }
             self.balances.insert(from, from_balance - value);
             let to_balance = self.balance_of(to);
@@ -350,11 +333,7 @@ mod erc20 {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
         use ink_env::{
-            hash::{
-                Blake2x256,
-                CryptoHash,
-                HashOutput,
-            },
+            hash::{Blake2x256, CryptoHash, HashOutput},
             Clear,
         };
 
@@ -387,7 +366,7 @@ mod erc20 {
                 let len_encoded = encoded.len();
                 if len_encoded <= len_result {
                     result.as_mut()[..len_encoded].copy_from_slice(&encoded);
-                    return result
+                    return result;
                 }
                 let mut hash_output =
                     <<Blake2x256 as HashOutput>::Type as Default>::default();

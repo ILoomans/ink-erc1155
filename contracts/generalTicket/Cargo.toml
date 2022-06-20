@@ -28,6 +28,7 @@ scale = { package = "parity-scale-codec", version = "2.1", default-features = fa
 # subber = { version = "3.0.0-rc5", path = "subber", default-features = false, features = ["ink-as-dependency"] }
 # accumulator = { version = "3.0.0-rc5", path = "accumulator", default-features = false, features = ["ink-as-dependency"] }
 scale-info = { version = "0.6", default-features = false, features = ["derive"], optional = true }
+endDate = { path = "../endDate", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 name = "erc20"
@@ -46,6 +47,7 @@ std = [
     "scale/std",
     "scale-info",
     "scale-info/std",
+    "endDate/std",
 ]
 ink-as-dependency = []
 ink-experimental-engine = ["ink_env/ink-experimental-engine"]

@@ -16,6 +16,9 @@ mod erc20 {
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_prelude::collections::BTreeMap;
+    use endDate::EndDate;
+    use ink_env::call::FromAccountId;
+
     /// A simple ERC-20 contract.
     #[ink(storage)]
     // #[derive(SpreadAllocate)]
@@ -88,11 +91,14 @@ mod erc20 {
     impl Erc20 {
         /// Creates a new ERC-20 contract with the specified initial supply.
         #[ink(constructor)]
-        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>,date:u128) -> Self {
+        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>,date:u128,end_date_address:AccountId) -> Self {
             let mut has_seats = true;
             if seats.clone().len()==0{
                 has_seats = false;
             }
+
+            let mut end_date_contract: EndDate = FromAccountId::from_account_id(end_date_address);
+            end_date_contract.set_end_date(date);
             let caller = Self::env().caller();
                 let mut instance = Self {
                     total_supply: Lazy::new(initial_supply),
