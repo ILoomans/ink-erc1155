@@ -35,7 +35,8 @@ mod erc20 {
         seats: Vec<String>,
         seat_taken: StorageHashMap<String,bool>,
         seat_balance:StorageHashMap<AccountId,bool>,
-        has_seats: bool
+        has_seats: bool,
+        date: u128,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -87,7 +88,7 @@ mod erc20 {
     impl Erc20 {
         /// Creates a new ERC-20 contract with the specified initial supply.
         #[ink(constructor)]
-        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>) -> Self {
+        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>,date:u128) -> Self {
             let mut has_seats = true;
             if seats.clone().len()==0{
                 has_seats = false;
@@ -105,10 +106,8 @@ mod erc20 {
                     seats,
                     seat_taken: Default::default(),
                     seat_balance: Default::default(),
-                    has_seats
-
-
-
+                    has_seats,
+                    date
                 };
             instance.balances.insert(owner, initial_supply);
             Lazy::set(&mut instance.total_supply, initial_supply);
@@ -118,6 +117,12 @@ mod erc20 {
                 value: initial_supply,
             });
             return instance
+        }
+
+
+        #[ink(message)]
+        pub fn get_date(&self) -> u128 {
+            self.date
         }
 
         // /// Default initializes the ERC-20 contract with the specified initial supply.

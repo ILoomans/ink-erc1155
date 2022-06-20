@@ -28,9 +28,8 @@ mod erc20 {
         owner:AccountId,
         contract_balance: Balance,
         proof_key: StorageHashMap<AccountId,String>,    
-        verifier: StorageHashMap<AccountId,bool>    
-
-
+        verifier: StorageHashMap<AccountId,bool>,
+        date: u128,    
     }
 
             /// index of signatures
@@ -93,7 +92,7 @@ mod erc20 {
 
         /// parent account will control it 
         #[ink(constructor)]
-        pub fn new(initial_supply: Balance, price: u128, owner: AccountId) -> Self {
+        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,date:u128) -> Self {
             let caller = Self::env().caller();
             let mut balances = StorageHashMap::new();
             balances.insert(owner, initial_supply);
@@ -106,8 +105,7 @@ mod erc20 {
                 contract_balance:0,
                 proof_key: Default::default(),
                 verifier: Default::default(),
-
-
+                date
             };
 
 
@@ -118,6 +116,11 @@ mod erc20 {
                 value: initial_supply,
             });
             instance
+        }
+        
+        #[ink(message)]
+        pub fn get_date(&self) -> u128 {
+            self.date
         }
 
         /// Returns the total token supply.
