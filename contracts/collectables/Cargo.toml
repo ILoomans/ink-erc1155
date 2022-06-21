@@ -1,6 +1,6 @@
 
 [package]
-name = "erc1155"
+name = "collectables"
 version = "3.0.0-rc5"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
@@ -27,9 +27,10 @@ scale = { package = "parity-scale-codec", version = "2.1", default-features = fa
 # accumulator = { version = "3.0.0-rc5", path = "accumulator", default-features = false, features = ["ink-as-dependency"] }
 scale-info = { version = "0.6", default-features = false, features = ["derive"], optional = true }
 redeemables = { path = "../redeemables", default-features = false, features = ["ink-as-dependency"] }
+# endDate = { path = "../endDate", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
-name = "erc1155"
+name = "collectables"
 path = "lib.rs"
 crate-type = [
     # Used for normal contract Wasm blobs.

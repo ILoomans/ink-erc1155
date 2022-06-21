@@ -4,7 +4,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod erc20 {
-    use endDate::EndDate;
+    use redeemables::Redeemables;
     use ink_prelude::string::String;
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
@@ -25,7 +25,7 @@ mod erc20 {
         contract_balance: Balance,
         proof_key: StorageHashMap<AccountId, String>,
         verifier: StorageHashMap<AccountId, bool>,
-        date: u128,
+        date: u64,
     }
 
     /// index of signatures
@@ -87,13 +87,13 @@ mod erc20 {
             initial_supply: Balance,
             price: u128,
             owner: AccountId,
-            date: u128,
+            date: u64,
             end_date_address: AccountId,
         ) -> Self {
             let caller = Self::env().caller();
             let mut balances = StorageHashMap::new();
             balances.insert(owner, initial_supply);
-            let mut end_date_contract: EndDate =
+            let mut end_date_contract: Redeemables =
                 FromAccountId::from_account_id(end_date_address);
             end_date_contract.set_end_date(date);
             let instance = Self {
@@ -116,10 +116,6 @@ mod erc20 {
             instance
         }
 
-        #[ink(message)]
-        pub fn get_date(&self) -> u128 {
-            self.date
-        }
 
         /// Returns the total token supply.
         #[ink(message)]

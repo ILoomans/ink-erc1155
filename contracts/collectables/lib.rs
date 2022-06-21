@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
+// pub use self::collectables::Collectables; 
 
 use ink_env::AccountId;
 use ink_lang as ink;
@@ -88,6 +89,10 @@ pub enum Error {
     // Token already exists
     TokenExists,
     CannotFetchValue,
+    /// Staking Time has not yet ended
+    StakingTimeNotEnded,
+    /// Ticket not found
+    TicketNotFound,
 }
 
 // The ERC-1155 result types.
@@ -230,8 +235,8 @@ pub trait Erc1155TokenReceiver {
 }
 
 #[ink::contract]
-mod erc1155 {
-    use super::*;
+pub mod collectables {
+    pub use super::*;
     use redeemables::Redeemables;
 
 
@@ -321,13 +326,14 @@ mod erc1155 {
         owned_tokens_index: BTreeMap<TokenId, u32>,
         owned_tokens: BTreeMap<(AccountId, u32), TokenId>,
         owned_tokens_count: BTreeMap<AccountId, u32>,
-        redeemable_contract: Lazy<Redeemables>,
+        redeemable_contract: Lazy<Redeemables>
+    
     }
 
     impl Contract {
         /// Initialize a default instance of this ERC-1155 implementation.
         #[ink(constructor)]
-        pub fn new(contract_address: AccountId) -> Self {
+        pub fn new(contract_address: AccountId,end_date_address:AccountId) -> Self {
             let contract_owner = Self::env().caller();
             let redeemable_contract: Redeemables = FromAccountId::from_account_id(contract_address);
             let redeemable_contract_address = contract_address;
@@ -469,33 +475,60 @@ mod erc1155 {
         // value: Balance,
         // data: Vec<u8>,
         /// stake the token
-
+        // todo: a staked token should also be able to be used for discounts after the initial staking period
+        // todo: stake for a specific ticket_id -nevermind we dont need this, simply need to get set id of the staked token
         #[ink(message)]
         pub fn stake_token(
             &mut self,
             token_id: TokenId,
             stake_amount: Balance,
+            ticket_id:AccountId,
             data: Vec<u8>
         ) -> Result<()> {
+            // Test if the ticket_id exists and has an end date
+            let end_date = self.redeemable_contract.get_end_date(ticket_id);
+            if end_date ==0 {
+                return Err(Error::TicketNotFound);
+            }
+            // retrieve the callers address who will be sending the token 
             let caller = self.env().caller();
-            let address = self.redeemable_contract.get_contract_address().clone();
-
+            //* important, now the collectables contract will own the balance when it is staked
+            let address = self.env().account_id();
             //* only you can stake your tokens - could change this later on
-            // self.perform_transfer(caller, address, token_id, stake_amount);
-            // self.balances
-            // .entry((address, token_id))
-            // .and_modify(|b| *b += stake_amount)
-            // .or_insert(stake_amount);
             ensure!(address != AccountId::default(), Error::ZeroAddressTransfer);
-
             let balance = self.balance_of(caller, token_id);
             ensure!(balance >= stake_amount, Error::InsufficientBalance);
-
             self.perform_transfer(caller, address, token_id, stake_amount);
             //todo: get the stake date
             let setid = self.token_features.get(&token_id).map(|v| v.setid.clone()).unwrap_or(0);
-            self.redeemable_contract.stake_nft(caller,token_id,stake_amount,setid,100);
+            self.redeemable_contract.stake_nft(caller,token_id,stake_amount,setid,ticket_id,end_date);
             Ok(())
+        }
+
+        /// Unstakes all of this type of token
+        #[ink(message)]
+        pub fn unstake_token(
+            &mut self,
+            token_id: TokenId,
+        ) -> Result<()> {
+            let caller = self.env().caller();
+            //* Get the date of unstaking 
+            let date = self.env().block_timestamp();
+            // todo: get the release date from end date contract, not redeemable one 
+            let releaseDate = self.redeemable_contract.get_release_date(caller,token_id);
+            if releaseDate != 0 && releaseDate < date {
+                let balance = self.redeemable_contract.get_balance(caller,token_id);
+                self.redeemable_contract.redeem_nft(caller,token_id);
+                self.perform_transfer(self.env().account_id(), caller, token_id, balance);
+                // let releaseDate = releaseDate.unwrap();
+                // if date > releaseDate {
+                //     self.redeemable_contract.unstake_nft(caller,token_id);
+                // }
+            }else{
+                return Err(Error::StakingTimeNotEnded);
+            }
+            Ok(())
+
         }
 
                 // /// Creates an NFT set

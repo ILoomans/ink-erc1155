@@ -15,6 +15,7 @@ ink_prelude = { version = "3.0.0-rc5", path = "../../crates/prelude", default-fe
 
 scale = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive"] }
 scale-info = { version = "0.6", default-features = false, features = ["derive"], optional = true }
+# collectables = { path = "../collectables", default-features = false, features = ["ink-as-dependency"] }
 
 [lib]
 name = "redeemables"

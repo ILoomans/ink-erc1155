@@ -16,7 +16,7 @@ mod erc20 {
     use ink_prelude::string::String;
     use ink_prelude::vec::Vec;
     use ink_prelude::collections::BTreeMap;
-    use endDate::EndDate;
+    use redeemables::Redeemables;
     use ink_env::call::FromAccountId;
 
     /// A simple ERC-20 contract.
@@ -39,7 +39,6 @@ mod erc20 {
         seat_taken: StorageHashMap<String,bool>,
         seat_balance:StorageHashMap<AccountId,bool>,
         has_seats: bool,
-        date: u128,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -91,13 +90,13 @@ mod erc20 {
     impl Erc20 {
         /// Creates a new ERC-20 contract with the specified initial supply.
         #[ink(constructor)]
-        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>,date:u128,end_date_address:AccountId) -> Self {
+        pub fn new(initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>,date:u64,end_date_address:AccountId) -> Self {
             let mut has_seats = true;
             if seats.clone().len()==0{
                 has_seats = false;
             }
 
-            let mut end_date_contract: EndDate = FromAccountId::from_account_id(end_date_address);
+            let mut end_date_contract: Redeemables = FromAccountId::from_account_id(end_date_address);
             end_date_contract.set_end_date(date);
             let caller = Self::env().caller();
                 let mut instance = Self {
@@ -113,7 +112,6 @@ mod erc20 {
                     seat_taken: Default::default(),
                     seat_balance: Default::default(),
                     has_seats,
-                    date
                 };
             instance.balances.insert(owner, initial_supply);
             Lazy::set(&mut instance.total_supply, initial_supply);
@@ -126,10 +124,7 @@ mod erc20 {
         }
 
 
-        #[ink(message)]
-        pub fn get_date(&self) -> u128 {
-            self.date
-        }
+
 
         // /// Default initializes the ERC-20 contract with the specified initial supply.
         // fn new_init(&mut self, initial_supply: Balance, price: u128, owner: AccountId,seats:Vec<String>) {

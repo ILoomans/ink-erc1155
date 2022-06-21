@@ -21,7 +21,7 @@ pub mod endDate {
     pub struct EndDate {
         /// Stores a single `bool` value on the storage.
         /// Gets contract end date
-        end_date: BTreeMap<AccountId, u128>,
+        end_date: BTreeMap<AccountId, u64>,
     }
 
     impl EndDate {
@@ -32,12 +32,12 @@ pub mod endDate {
         }
 
         #[ink(message)]
-        pub fn get_end_date(&self, address: AccountId) -> u128 {
+        pub fn get_end_date(&self, address: AccountId) -> u64 {
             self.end_date[&address]
         }
 
         #[ink(message)]
-        pub fn set_end_date(&mut self, end_date: u128) -> Result<()> {
+        pub fn set_end_date(&mut self, end_date: u64) -> Result<()> {
             //todo: only let smart contracts do this 
             let caller = self.env().caller();
             self.end_date.insert(caller, end_date);
